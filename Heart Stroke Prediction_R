@@ -1,0 +1,309 @@
+#Link to the dataset:
+#https://gist.github.com/aishwarya8615/d2107f828d3f904839cbcb7eaa85bd04#file-healthcare-dataset-stroke-data-csv
+
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+install.packages("kernlab")
+library(kernlab)
+library(plyr)
+library(pROC)
+
+install.packages("e1071")
+library(e1071)
+library(caret)
+
+
+getwd()
+
+heart <- read.csv("healthcare-dataset-stroke-data.csv")
+
+head(heart,5)
+
+dim(heart)
+str(heart)
+
+colSums(is.na(heart))
+colSums(heart == "N/A")
+colSums(heart == "Other")
+
+heart <- subset(heart, bmi != "N/A")
+heart <- subset(heart, gender != "Other")
+dim(heart)
+str(heart)
+names(heart)
+colSums(is.na(heart))
+colSums(heart == "N/A")
+colSums(heart == "Other")
+
+#dupl <- data.frame(table(heart$id))
+#dupl[dupl$Freq > 1]
+heart <- heart[ ,2:12]
+summary(heart)
+
+heart$gender <- as.factor(heart$gender)
+heart$ever_married <- as.factor(heart$ever_married)
+heart$work_type <- as.factor(heart$work_type)
+heart$Residence_type <- as.factor(heart$Residence_type)
+heart$bmi <- as.numeric(heart$bmi)
+heart$smoking_status <- as.factor(heart$smoking_status)
+
+str(heart)
+summary(heart$age)
+x <- heart$age
+h <- hist(x, breaks=15, col='blue', xlab='Age in Years', main='Histogram with Normal Curve')
+
+xfit <- seq(min(x), max(x), length = 40)
+yfit <- dnorm(xfit, mean=mean(x), sd=sd(x))
+yfit <- yfit*diff(h$mids[1:2])*length(x)
+lines(xfit, yfit, col = 'green', lwd=2)
+
+summary(heart$avg_glucose_level)
+
+#class(heart$avg_glucose_level)
+
+gl_sorted <- sort(heart$avg_glucose_level)
+plot(heart$avg_glucose_level, xlab = "Numbers", ylab = "Average Glucose Level")
+boxplot(heart$avg_glucose_level, main="Average_Glucose_Level")
+
+summary(heart$gender)
+#anyNA(heart)
+plot(heart$gender, col="violet", ylab="Frequency", main="Difference of Male and Female")
+
+summary(heart$hypertension)
+hist(heart$hypertension, breaks = 5, col="violet", xlab="Presence of Hypertension", main="Histogram of Hypertension")
+
+summary(heart$heart_disease)
+hist(heart$heart_disease, breaks = 5, col="violet", xlab="Presence of Heart Disease", main="Histogram of Heart Disease")
+
+summary(heart$ever_married)
+plot(heart$ever_married, col="violet", main= "Status of Ever Married")
+
+summary(heart$work_type)
+plot(heart$work_type, col="violet", main= "Status of Work Type")
+
+summary(heart$bmi)
+bmi_sorted <- sort(heart$bmi)
+plot(heart$bmi, xlab = "People", ylab = "BMI Index")
+boxplot(heart$bmi, main="Box-plot for BMI Index")
+
+#hist(heart$bmi, col="violet", xlab="BMI Index", main = "Histogram of BMI")
+
+#plot(heart$stroke, horiz = TRUE, main="people with and without stroke")
+#did not work
+
+#names(heart)
+
+
+#sum(heart$gender == "Other")
+
+heart <- heart %>%
+  mutate(
+    gender = factor(gender),
+    hypertension = factor(hypertension),
+    heart_disease = factor(heart_disease),
+    ever_married = factor(ever_married),
+    work_type = factor(work_type),
+    Residence_type = factor(Residence_type),
+    bmi = as.numeric(bmi),
+    smoking_status = factor(smoking_status),
+    stroke = factor(stroke)
+  )
+
+heart %>%
+  ggplot(aes(x = gender, fill = stroke)) + geom_bar()
+
+heart %>%
+  ggplot(aes(x = hypertension, fill = stroke)) + geom_bar()
+
+heart %>%
+  ggplot(aes(x = heart_disease, fill = stroke)) + geom_bar()
+
+heart %>%
+  ggplot(aes(x = ever_married, fill = stroke)) + geom_bar()
+
+heart %>%
+  ggplot(aes(x = work_type, fill = stroke)) + geom_bar()
+
+heart %>%
+  ggplot(aes(x = Residence_type, fill = stroke)) + geom_bar()
+
+heart %>%
+  ggplot(aes(x = smoking_status, fill = stroke)) + geom_bar()
+
+
+
+heart_prop <- heart %>%
+  group_by(gender) %>%
+  summarise(proportion = sum(stroke == "1")/length(gender))
+
+heart_prop %>%
+  ggplot(aes(x=gender, y=proportion)) + geom_col(fill = "violet")
+
+heart_prop <- heart %>%
+  group_by(hypertension) %>%
+  summarise(proportion = sum(stroke == "1")/length(hypertension))
+
+heart_prop %>%
+  ggplot(aes(x=hypertension, y=proportion)) + geom_col(fill = "violet")
+
+heart_prop <- heart %>%
+  group_by(heart_disease) %>%
+  summarise(proportion = sum(stroke == "1")/length(heart_disease))
+
+heart_prop %>%
+  ggplot(aes(x=heart_disease, y=proportion)) + geom_col(fill = "violet")
+
+heart_prop <- heart %>%
+  group_by(ever_married) %>%
+  summarise(proportion = sum(stroke == "1")/length(ever_married))
+
+heart_prop %>%
+  ggplot(aes(x=ever_married, y=proportion)) + geom_col(fill = "violet")
+
+heart_prop <- heart %>%
+  group_by(work_type) %>%
+  summarise(proportion = sum(stroke == "1")/length(work_type))
+
+heart_prop %>%
+  ggplot(aes(x=work_type, y=proportion)) + geom_col(fill = "violet")
+
+heart_prop <- heart %>%
+  group_by(Residence_type) %>%
+  summarise(proportion = sum(stroke == "1")/length(Residence_type))
+
+heart_prop %>%
+  ggplot(aes(x=Residence_type, y=proportion)) + geom_col(fill = "violet")
+
+heart_prop <- heart %>%
+  group_by(smoking_status) %>%
+  summarise(proportion = sum(stroke == "1")/length(smoking_status))
+
+heart_prop %>%
+  ggplot(aes(x=smoking_status, y=proportion)) + geom_col(fill = "violet")
+
+#write.table(heart, file = "ExportedFile.csv", row.names=F, sep = ",")
+
+library(corrplot)
+
+cor_heart <- cor(heart[9, 10:11])
+
+#Log Regression
+#
+set.seed(10)
+colnames(heart)
+
+inTrainRows <- createDataPartition(heart$stroke, p= 0.8, list = FALSE)
+trainData <- heart[inTrainRows,]
+testData <- heart[-inTrainRows,]
+nrow(trainData)/(nrow(testData)+nrow(trainData))
+
+#
+
+AUC = list()
+Accuracy = list()
+
+set.seed(10)
+logRegModel <- train(stroke ~ ., data = trainData, method= 'glm', family= 'binomial')
+logRegPred <- predict(logRegModel, testData)
+logRegPredProb <- predict(logRegModel, testData, type = 'prob')[2]
+logRegConfMat <- confusionMatrix(logRegPred, testData[, "stroke"])
+
+#
+AUC$logReg <- roc(as.numeric(testData$stroke), as.numeric(as.matrix(logRegPredProb)))$auc
+Accuracy$logReg <- logRegConfMat$overall['Accuracy']
+
+#SVM
+
+
+fitControl <- trainControl(method = "repeatedcv",
+                           number = 10,
+                           repeats = 10,
+                           classProbs = 10,
+                           summaryFunction = twoClassSummary)
+
+levels(heart$stroke) = c("Yes", "No")
+levels(heart$hypertension) = c("Yes", "No")
+levels(heart$heart_disease) = c("Yes", "No")
+
+heart <- heart %>%
+  mutate(
+    age = dplyr::case_when(
+      age <= 14 ~ "Children",
+      age > 14 & age <= 25 ~ "Youth",
+      age > 25 & age <= 64 ~ "Adults",
+      age > 64 ~ "Seniors"
+    ),
+    
+    age = factor(age, levels = c("Children", "Youth", "Adults", "Seniors"))
+  )
+
+heart <- heart %>%
+  mutate(
+    avg_glucose_level = dplyr::case_when(
+      avg_glucose_level <= 70 ~ "Healthy",
+      avg_glucose_level > 70 & avg_glucose_level <= 99 ~ "Normal",
+      avg_glucose_level > 99 & avg_glucose_level <= 125 ~ "Pre-Diabetes",
+      avg_glucose_level > 125 ~ "Diabetes"
+    ),
+    
+    avg_glucose_level = factor(avg_glucose_level, levels = c("Healthy", "Normal", "Pre-Diabetes", "Diabetes"))
+  )
+
+heart <- heart %>%
+  mutate(
+    bmi = dplyr::case_when(
+      bmi <= 19 ~ "Underweight",
+      bmi > 19 & bmi <= 25 ~ "Healthy Range",
+      bmi > 25 & bmi <= 30 ~ "Overweight",
+      bmi > 30 & bmi <= 40 ~ "Obesity",
+      bmi > 40 ~ "Severe Obesity"
+    ),
+    
+    bmi = factor(bmi, levels = c("Underweight", "Healthy Range", "Overweight", "Obesity", "Severe Obesity"))
+  )
+
+heart$age <- as.factor(heart$age)
+heart$avg_glucose_level <- as.factor(heart$avg_glucose_level)
+heart$bmi <- as.factor(heart$bmi)
+
+sapply(heart, levels)
+str(heart)
+
+heart$work_type <- revalue(heart$work_type, c("Self-employed" = "Self_employed"))
+heart$smoking_status <- revalue(heart$smoking_status, c("formerly smoked" = "Formerly_smoked", "never smoked" = "Never_smoked", "smokes" = "Smokes"))
+heart$avg_glucose_level <- revalue(heart$avg_glucose_level, c("Pre-Diabetes" = "Pre_Diabetes"))
+heart$bmi <- revalue(heart$bmi, c("Healthy Range" = "Healthy", "Severe Obesity" = "Severe_Obesity"))
+heart$smoking_status <- revalue(heart$smoking_status, c("Unknown" = "Unknwn"))
+heart$hypertension <- revalue(heart$hypertension, c("Yes" = "Y", "No" = "N"))
+heart$heart_disease <- revalue(heart$heart_disease, c("Yes" = "Y", "No" = "N"))
+heart$ever_married <- revalue(heart$ever_married, c("Yes" = "Y", "No" = "N"))
+heart$stroke <- revalue(heart$stroke, c("Yes" = "Y", "No" = "N"))
+
+
+sapply(heart, levels)
+
+str(heart)
+set.seed(10)
+#svmModel <- train(stroke ~ ., data = trainData, method= '', trControl = fitControl, preProcess = NULL, tuneLength = 8, metric = "ROC")
+#trainData2 <- trainData
+svmModel <- train(stroke~.,
+                  data = trainData,
+                  method = "svmRadial",
+                  trControl = fitControl,
+                  preProcess = NULL,
+                  tuneLength = 10,
+                  metric = "ROC")
+
+?make.names
+svmPred <- predict(svmModel, testData)
+svmPredProb <- predict(svmModel, testData, type= 'prob')[2]
+svmConfMat <- confusionMatrix(svmPred, testData[,"stroke"])
+
+AUC$svm <- roc(as.numeric(testData$stroke), as.numeric(as.matrix(svmPredProb)))$auc
+Accuracy$svm <- svmConfMat$overall['Accuracy']
+
+row.names <- names(Accuracy)
+col.names <- c("AUC", "Accuracy")
+cbind(as.data.frame(matrix(c(AUC, Accuracy), nrow = 2, ncol = 2, dimnames = list(row.names, col.names))))
